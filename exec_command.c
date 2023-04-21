@@ -8,6 +8,49 @@
  */
 int execute_command(char **args)
 {
+	char *path, *token;
+	char *dirs[1024];
+	int i, found = 0;
+
+	if (access(args[0], X_OK) == 0)
+	{
+		found = 1;
+	}
+	else
+	{
+		/* Search for command in PATH */
+		path = _getenv("PATH");
+		token = strtok(path, ":");
+		i = 0;
+		while (token)
+		{
+			dirs[i] = token;
+			token = strtok(NULL, ":");
+			i++;
+		}
+		dirs[i] = NULL;
+
+		for (i = 0; dirs[i]; i++)
+		{
+			path = _strcat(dirs[i], "/");
+			path = _strcat(path, args[0]);
+			if (access(path, X_OK) == 0)
+			{
+				args[0] = path;
+				found = 1;
+				break;
+			}
+			free(path);
+		}
+	}
+
+	if (!found)
+	{
+		perror(args[0]);
+		return (-1);
+	}
+
+
 	pid_t pid;
 	int status;
 
