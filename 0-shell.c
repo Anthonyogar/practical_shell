@@ -36,27 +36,10 @@ int main(void)
 			continue;
 		}
 
-		/* Fork child process */
-		pid_t pid = fork();
-
-		if (pid == -1)
+		/* execute command */
+		if (execute_commmand(args) == -1)
 		{
-			perror("fork");
-			exit(1);
-		}
-		else if (pid == 0)
-		{
-			/* Child process */
-			if (execve(buffer, NULL, environ) == -1)
-			{
-				perror("execve");
-				exit(1);
-			}
-		}
-		else
-		{
-			/* Parent process */
-			wait(NULL);
+			printf("Failed to execute command\n");
 		}
 	}
 
