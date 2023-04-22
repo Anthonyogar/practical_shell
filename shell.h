@@ -56,6 +56,16 @@ int _getline(data_of_program *data);
 int check_logic_ops(char *array_commands[], int i, char array_operators[]);
 
 
+	/* expansions.c */
+/* expand variables */
+void expand_variables(data_of_program *data);
+
+/* expand aliases */
+void expand_alias(data_of_program *data);
+
+/* append the string to the end of the buffer */
+int buffer_add(char *buffer, char *str_to_add);
+
 
 
 #endif /* SHELL_H */
