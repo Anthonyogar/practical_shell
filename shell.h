@@ -9,11 +9,14 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <sys/types.H>
+#include <sys/types.h>
 #include <errno.h>
 #include <stddef.h>
 
 #define BUFSIZE 1024
+#define MAX_ARGS 128
+#define INTERACTIVE_ERRNO 42
+#define PROMPT_MSG "$ "
 
 /**
  * struct data_of_program - data needed for the execution of the program
