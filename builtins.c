@@ -13,7 +13,7 @@ int builtin_exit(data_of_program *data)
 /**
  * builtin_cd - changes the current directory
  * @data: struct for the program's data
- * return: returns 0 on success, -1 on error.
+ * Return: returns 0 on success, -1 on error.
  */
 int builtin_cd(data_of_program *data)
 {
@@ -133,4 +133,7 @@ int builtin_alias(data_of_program *data)
 		return (0);
 	}
 
-	if (add_alias(alias, data->arguments[1], data->arguments[2]
+	if (add_alias(alias, data->arguments[1], data->arguments[2] == NULL)
+			return (_puterror(data, "Error: Allocation failed\n", 1));
+	return (0);
+}
