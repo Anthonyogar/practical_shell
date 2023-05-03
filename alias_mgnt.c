@@ -66,7 +66,7 @@ char *get_alias_value(shell_data *data, char *alias_name)
     return (NULL);
 }
 
-int set_alias(char *alias_string, shell_data *shell_data) {
+int set_alias(char *alias_string, shell_data *data) {
     int i, j;
     char buffer[250] = {0}, *temp = NULL;
 

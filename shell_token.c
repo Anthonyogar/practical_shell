@@ -4,14 +4,16 @@
  * tokenize - splits the input string into tokens using a specified delimiter
  * @shell_data: a pointer to the shell's data
  */
-void tokenize(Shell_data *shell_data)
+void tokenize(shell_data *data)
 {
 	char *delim = " \t";
 	int i, j, num_tokens = 2, input_len;
 
 	input_len = str_length(shell_data->input_line);
 	if (input_len > 0 && shell_data->input_line[input_len - 1] == '\n')
+	{
 		shell_data->input_line[input_len - 1] = '\0';
+	}
 
 	for (i = 0; shell_data->input_line[i]; i++)
 	{
