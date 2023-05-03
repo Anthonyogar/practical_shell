@@ -1,31 +1,58 @@
 #include "shell.h"
 
 /**
- * _getline - reads one line of the standard input
+ * get_input_line - reads one line of the standard input
  * @data: pointer to the struct containing the data of the program
  *
  * Retrun: the line read from the standard input
  */
-int _getline(data_of_program *data)
+int get_input_line(shell_data *data)
 {
-	char *line = NULL;
-	size_t len = 0;
+	char buff[BUFFER_SIZE];
+	static char *array_commands[10] = {NULL};
+	static char array_operators[10] = {'\0'};
+	ssize_t bytes_read;
+	int i;
 
-	data->line_read = getline(&line, &len, stdin);
+	if (!array_commands[0] || (array_operators[0] == '&' && errno != 0) ||
+        (array_operators[0] == '|' && errno == 0))
+	{
+        	for (i = 0; array_commands[i]; i++)
+		{
+            		free(array_commands[i]);
+            		array_commands[i] = NULL;
+		}
 
-	if (data->line_read == 1)
-		return (data->line_read);
+		bytes_read = read(data->file_descriptor, buff, BUFFER_SIZE - 1);
 
-	/* remove trailing newline */
-	line[data->line_read - 1] = '\0';
+		if (bytes_read == 0)
+		{
+			return -1;
+		}
 
-	data->line = line;
+		i = 0;
 
-	return (data->line_read);
+		 do {
+			  array_commands[i] = strdup(strtok(i ? NULL : buff, "\n;"));
+			  i = check_logical_operators(array_commands, i, array_operators);
+		 } while (array_commands[i++]);
+	}
+
+	data->input_line = array_commands[0];
+
+	for (i = 0; array_commands[i]; i++)
+	{
+		 array_commands[i] = array_commands[i + 1];
+		 array_operators[i] = array_operators[i + 1];
+	}
+
+	return strlen(data->input_line);
 }
 
+
+
 /**
- * check_logic_ops - split each line for the logical
+ * check_logic_operators - split each line for the logical
  * operators if it exists
  * @array_commands: array of commands
  * @i: current position of the array
@@ -33,34 +60,36 @@ int _getline(data_of_program *data)
  *
  * Return: new position of the array_commands
  */
-int check_logic_ops(char *array_commands[], int i, char array_operators[])
+int check_logical_operators(char *array_commands[], int i, char array_operators[])
 {
-	int k, j, len;
-	char *p, *temp;
+	char *temp;
+	int j;
 
-	p = array_commands[i];
-	len = _strlen(p);
+	 for (j = 0; array_commands[i] && array_commands[i][j]; j++)
+	 {
+		 if (array_commands[i][j] == '&' && array_commands[i][j + 1] == '&')
+		 {
+			temp = array_commands[i];
+            		array_commands[i][j] = '\0';
+            		array_commands[i] = strdup(array_commands[i]);
+            		array_commands[i + 1] = strdup(temp + j + 2);
+            		i++;
+            		array_operators[i] = '&';
+            		free(temp);
+			j = 0;
+		 }
+		 if (array_commands[i][j] == '|' && array_commands[i][j + 1] == '|')
+		 {
+			temp = array_commands[i];
+           		array_commands[i][j] = '\0';
+            		array_commands[i] = strdup(array_commands[i]);
+            		array_commands[i + 1] = strdup(temp + j + 2);
+            		i++;
+            		array_operators[i] = '|';
+            		free(temp);
+            		j = 0;
+		 }
+	 }
 
-	for (j = 0; array_operators[j]; j++)
-	{
-		temp = array_operators + j;
-		k = _strlen(temp);
-
-		if (len > k && !_strncmp(p + len - k, temp, k))
-		{
-			array_commands[i] = strndup(p, len - k);
-			array_commands[i + 1] = _strndup(p + len - k + 1);
-
-			if (!array_commands[i] || !array_commands[i + 1])
-			{
-				perror("check_logic_ops: malloc failed");
-				exit(EXIT_FAILURE);
-			}
-
-			free(p);
-			return (i + 1);
-		}
-	}
-
-	return (i);
+	 return i;return i;
 }

@@ -1,128 +1,115 @@
 #include "shell.h"
+
 /**
  * expand_variables - expand variables
  * @data: a pointer to a struct of the program's data
  *
- * Return: nothing, but sets errno
+ * Return: nothing, but sets errno.
  */
-/* expand variables */
-void expand_variables(data_of_program *data)
+void expand_variables(shell_data *data)
 {
-	char *dollar_sign, *variables_value, *variable_name;
-	char *command = data->line;
-	char *expand_command = NULL;
-	int new_size, expansion_length, index, i;
+	int i, j;
+	char line[BUFFER_SIZE] = {0}, expansion[BUFFER_SIZE] = {'\0'}, *temp;
 
-	/* find first occurrence of $ */
-	dollar_sign = strchr(command, '$');
-	while (dollar_sign != NULL)
-	{
-		/* check if $ is escaped */
-		if (dollar_sign != command && *(dollar_sign - 1) == '\\')
+	if (data->input_line == NULL)
+		return;
+	buffer_add(line, data->input_line);
+	for (i = 0; line[i]; i++)
+		if (line[i] == '#')
+			line[i--] = '\0';
+		else if (line[i] == '$' && line[i + 1] == '?')
 		{
-			dollar_sign = strchr(dollar_sign + 1, '$');
+			line[i] = '\0';
+			long_to_string(errno, expansion, 10);
+			buffer_add(line, expansion);
+			buffer_add(line, data->input_line + i + 2);
+		}
+		else if (line[i] == '$' && line[i + 1] == '$')
+		{
+			line[i] = '\0';
+			long_to_string(getpid(), expansion, 10);
+			buffer_add(line, expansion);
+			buffer_add(line, data->input_line + i + 2);
+		}
+		else if (line[i] == '$' && (line[i + 1] == ' ' || line[i + 1] == '\0'))
 			continue;
-		}
-
-		/* get variable name */
-		index = dollar_sign - command;
-		variable_name = dollar_sign + 1;
-		while (*variable_nmae != '\0' && *variable_name != ' ' && *variable_name != '\t')
+		else if (line[i] == '$')
 		{
-			variable_name++;
+			for (j = 1; line[i + j] && line[i + j] != ' '; j++)
+				expansion[j - 1] = line[i + j];
+			temp = env_get_key(expansion, data);
+			line[i] = '\0', expansion[0] = '\0';
+			buffer_add(expansion, line + i + j);
+			temp ? buffer_add(line, temp) : 1;
+			buffer_add(line, expansion);
 		}
-		*variable_name = '\0';
-
-		/* expand variable */
-		variable_value = getenv(dollar_sign + 1);
-		expansion_length = strlen(variable_value);
-		new_size = strlen(command) + expansion_length - strlen(dollar_sign);
-		expanded_command = malloc(new_size + 1);
-		if (expanded_command == NULL)
-		{
-			perror("malloc error");
-			exit(EXIT_FAILURE);
-		}
-
-		/* copy command before the variable */
-		strncpy(expanded_command,  command, index);
-		expanded_command[index] = '\0';
-
-		/* copy variable value */
-		strcat(expanded_command, variable_value);
-
-		/* copy rest of command after variable */
-		strcat(expanded_command, dollar_sign + strlen(variable_value) + 1);
-
-		/* update command and free memory */
-		free(command);
-		command = expanded_command;
-
-		/* update index and find next variable */
-		index += expansion_length;
-		dollar_sign = strchr(command + index, '$');
+	if (!str_compare(data->input_line, line, 0))
+	{
+		free(data->input_line);
+		data->input_line = str_duplicate(line);
 	}
-
-	data->line = command;
 }
 
 /**
  * expand_alias - expans aliases
- * @data: a pointer to a struct of the programs's data
+ * @data: a pointer to a struct of the program's data
  *
- * Return: nothing, but sets errno
+ * Return: nothing, but sets errno.
  */
-/* expand aliases */
-void expand_alias(data_of_program *data)
+void expand_alias(shell_data *data)
 {
-	char *alias_value;
-	char *command = data->line;
-	char *expanded_command = NULL;
-	char *alias_name = strtok(command, " \t\n");
-	int new_size;
+	int i, j, was_expanded = 0;
+	char line[BUFFER_SIZE] = {0}, expansion[BUFFER_SIZE] = {'\0'}, *temp;
 
+	if (data->input_line == NULL)
+		return;
 
-	/* find alias */
-	if (alias_name != NULL)
+	buffer_add(line, data->input_line);
+
+	for (i = 0; line[i]; i++)
 	{
-		alias_value = search_alias(alias_name, data->aliases);
-		if (alias_value != NULL)
-		{
-			/* expand alias */
-			new_size = strlen(alias_value) + strlen(command) - strlen(alias_name);
-			expand_command = malloc(new_size + 1);
-			if (expanded_command == NULL)
-			{
-				perror("malloc error");
-				exit(EXIT_FAILURE);
-			}
-			strcpy(expanded_command, alias_value);
-			strcat(expanded_command, command + strlen(alias_name));
-			free(command);
-			command = expanded_command;
-		}
-	}
+		for (j = 0; line[i + j] && line[i + j] != ' '; j++)
+			expansion[j] = line[i + j];
+		expansion[j] = '\0';
 
-	data->line = command;
+		temp = get_alias(data, expansion);
+		if (temp)
+		{
+			expansion[0] = '\0';
+			buffer_add(expansion, line + i + j);
+			line[i] = '\0';
+			buffer_add(line, temp);
+			line[str_length(line)] = '\0';
+			buffer_add(line, expansion);
+			was_expanded = 1;
+		}
+		break;
+	}
+	if (was_expanded)
+	{
+		free(data->input_line);
+		data->input_line = str_duplicate(line);
+	}
 }
 
 /**
  * buffer_add - append string at end of the buffer
  * @buffer: buffer to be filled
- * @str_to_add: string to be copied in the buffer
- * Return: nothing, but sets errno
+ * str_to_add: string to be copied in the buffer
+ * Return: the length of the buffer after
+ * the string has been added.
  */
-/* append the string to the end of the buffer */
 int buffer_add(char *buffer, char *str_to_add)
 {
-	int buffer_len = strlen(buffer);
-	int str_len = strlen(str_to_add);
-	if (buffer_len + str_len >= BUFFER_SIZE - 1)
+	int length, i;
+
+	length = str_length(buffer);
+
+	for (i = 0; str_to_add[i]; i++)
 	{
-		fprintf(stderr, "Error: buffer overeflow\n");
-		return (-1);
+		buffer[length + i] = str_to_add[i];
 	}
 
-	strcat(buffer, str_to_add);
-	return (buffer_len + str_len);
+	buffer[length + i] = '\0';
+	return (length + i);
 }
