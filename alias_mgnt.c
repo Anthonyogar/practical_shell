@@ -1,131 +1,106 @@
 #include "shell.h"
+
 /**
- * print_alias - prints the list of aliases or a specific alias
- * @data: A pointer to the data_of_program struct
+ * display_aliases - display all aliases or an individual alias
+ * @shell_data: struct for the shell's data
+ * @alias_name: name of the alias to be displayed
  *
- * @alias: The name of the alias to print.
- * If NULL, all aliases are printed
- *
- * Return: 0 on success, 1 on failure
+ * Return: 0 on success, -1 on failure
  */
-int print_alias(data_of_program *data, char *alias)
+int display_aliases(shell_data *data, char *alias_name)
 {
-	alias_t *tmp;
+    int i, j, alias_name_len;
+    char buffer[250] = {0};
 
-	if (!data)
-		return (0);
+    if (shell_data->aliases)
+    {
+        alias_name_len = strlen(alias_name);
+        for (i = 0; shell_data->aliases[i]; i++)
+        {
+            if (!alias_name || (strncmp(shell_data->aliases[i], alias_name, alias_name_len) == 0
+                && shell_data->aliases[i][alias_name_len] == '='))
+            {
+                for (j = 0; shell_data->aliases[i][j]; j++)
+                {
+                    buffer[j] = shell_data->aliases[i][j];
+                    if (shell_data->aliases[i][j] == '=')
+                        break;
+                }
+                buffer[j + 1] = '\0';
+                buffer_append(buffer, "'");
+                buffer_append(buffer, shell_data->aliases[i] + j + 1);
+                buffer_append(buffer, "'\n");
+                _print(buffer);
+            }
+        }
+    }
 
-	tmp = data->alias;
-
-	if (alias == NULL)
-	{
-		while (tmp != NULL)
-		{
-			_print(tmp->alias_name);
-			_print("='");
-			_print(tmp->alias_cmd);
-			_print("'\n");
-			tmp = tmp->next;
-		}
-	}
-	else
-	{
-		while (tmp != NULL)
-		{
-			if (_strcmp(tmp->alias_name, alias) == 0)
-			{
-				_print(tmp->alias_cmd);
-				_print("\n");
-				return (0);
-			}
-			tmp = tmp->next;
-		}
-		return (1);
-	}
-	return (0);
+    return (0);
 }
 
 /**
- * get_alias - gets the value of an alias
+ * get_alias_value - get the value of an alias
+ * @shell_data: struct for the shell's data
+ * @alias_name: name of the requested alias
  *
- * @data: A pointer to the data_of_program struct
- * @alias: The name of the alias to retrieve
- *
- * Return: A pointer to the alias command string,
- * NULL if not found
+ * Return: value of the alias if found, otherwise NULL
  */
-char *get_alias(data_of_program *data, char *alias)
+char *get_alias_value(shell_data *data, char *alias_name)
 {
-	alias_t *tmp;
+    int i, alias_name_len;
 
-	if (!date || !alias)
-		return (NULL);
+    if (alias_name == NULL || shell_data->aliases == NULL)
+        return (NULL);
 
-	tmp = data->alias;
+    alias_name_len = strlen(alias_name);
 
-	while (tmp != NULL)
-	{
-		if (_strcmp(tmp->alias_name, alias) == 0)
-			return (tmp->alias_cmd);
-		tmp = tmp->next;
-	}
+    for (i = 0; shell_data->aliases[i]; i++)
+    {
+        if (strncmp(alias_name, shell_data->aliases[i], alias_name_len) == 0 &&
+            shell_data->aliases[i][alias_name_len] == '=')
+        {
+            return (shell_data->aliases[i] + alias_name_len + 1);
+        }
+    }
 
-	return (NULL);
+    return (NULL);
 }
 
-/**
- * set_alias - adds or updates an alias
- *
- * @alias_string: The string containing the
- * alias name and command
- *
- * @data: A pointer to the data_of_program struct
- *
- * Return: 0 on success, 1 on failure
- */
-int set_alias(char *alias_string, data_of_program *data)
-{
-	char *alias_name, *alias_cmd;
-	alias_t *tmp, *new_alias;
+int set_alias(char *alias_string, shell_data *shell_data) {
+    int i, j;
+    char buffer[250] = {0}, *temp = NULL;
 
-	if (!alias_string || !data)
-		return (1);
+    // check for valid arguments
+    if (alias_string == NULL || shell_data->aliases == NULL)
+        return -1;
 
-	alias_name = strtok(alias_string, "=");
+    // extract alias name and value
+    for (i = 0; alias_string[i] != '\0'; i++) {
+        if (alias_string[i] != '=') {
+            buffer[i] = alias_string[i];
+        } else {
+            temp = get_alias_value(shell_data, alias_string + i + 1);
+            break;
+        }
+    }
 
-	if (!alias_name)
-		return (1);
+    // check if alias already exists
+    for (j = 0; shell_data->aliases[j] != NULL; j++) {
+        if (strncmp(buffer, shell_data->aliases[j], i) == 0 &&
+            shell_data->aliases[j][i] == '=') {
+            free(shell_data->aliases[j]);
+            break;
+        }
+    }
 
-	alias_cmd = strtok(NULL, "=");
+    // add the alias
+    if (temp != NULL) {
+        buffer_append(buffer, "=");
+        buffer_append(buffer, temp);
+        shell_data->aliases[j] = strdup(buffer);
+    } else {
+        shell_data->aliases[j] = strdup(alias_string);
+    }
 
-	if (alias_cmd)
-		return (1);
-
-	tmp = data->alias;
-
-	while (tmp != NULL)
-	{
-		if (_strcmp(tmp->alias_name, alias_name) == 0)
-		{
-			free(tmp->alias_cmd);
-			temp->alais_cmd = _strdup(alias_cmd);
-			return (0);
-		}
-		tmp = tmp->next;
-	}
-	new_alias = malloc(sizeof(alias_t));
-
-	if (!new_alias)
-		return (1);
-	new_alias->alias_name = _strdup(alias_name);
-	if (!new_alias->alias_name)
-		return (1);
-	new_alias->alias_cmd = strdup(alias_cmd);
-	if (!new_alias->alias_cmd)
-		return (1);
-
-	new_alias->next = data->alias;
-	data->alias = new_alias;
-
-	return (0);
+    return 0;
 }
