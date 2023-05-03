@@ -1,38 +1,45 @@
 #include "shell.h"
 
 /**
- * builtins_list - checks if the command matches a built-in
- *                 and excutes it
- * @data: struct containing the program's data
+ * find_builtin - searches for a match between the given command and a builtin
+ * @data: pointer to a struct containing the program's data
  *
- * Return: the return value of the executed built-in function
- * if there is a match, otherwise returns -1
- */
-int builtins_list(data_of_program *data)
+ * Return: a pointer to the matched builtin function or NULL if there's no match
+ **/
+int (*find_builtin(shell_data *data))(shell_data *)
 {
 	int i;
-	builtins options[] =
-	{
+	builtin_t builtins[] = {
 		{"exit", builtin_exit},
 		{"help", builtin_help},
 		{"cd", builtin_cd},
 		{"alias", builtin_alias},
-		{"env", builtins_env},
-		{"setenv", builtin_set_env},
-		{"unsetenv", builtin_unset_env}
+		{"env", builtin_env},
+		{"setenv", builtin_setenv},
+		{"unsetenv", builtin_unsetenv},
 		{NULL, NULL}
 	};
 
-	/* check if the command matches a built-in */
-	for (i = 0; options[i].builtin != NULL; i++)
+	for (i = 0; builtins[i].name != NULL; i++)
 	{
-		if (str_compare(options[i].builtin, data->command_name, 0))
-		{
-			/* execute the built-in and return its return value */
-			return (options[i].functions(data));
-		}
+		if (str_compare(data->command_name, builtins[i].name, 0))
+			return (builtins[i].function);
 	}
+	return (NULL);
+}
 
-	/* no match found */
+/**
+ * run_builtin - executes the matched builtin function
+ * @data: pointer to a struct containing the program's data
+ *
+ * Return: the return value of the executed function or -1 if there's no match
+ **/
+int run_builtin(shell_data *data)
+{
+	int (*builtin)(shell_data *);
+
+	builtin = find_builtin(data);
+	if (builtin != NULL)
+		return (builtin(data));
 	return (-1);
 }

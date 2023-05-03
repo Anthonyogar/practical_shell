@@ -1,139 +1,150 @@
 #include "shell.h"
+
 /**
- * builtin_exit - closes the shell
- * @data: struct for the program's data
- * Return: always returns 0.
+ * Terminate the shell program with the given status.
+ * @shell_data: The data structure containing information about the shell.
+ * Return: 0 on success, or another number if specified in the arguments.
  */
-int builtin_exit(data_of_program *data)
+int builtin_exit(shell_data *data)
 {
-	free_all_data(data);
-	exit(EXIT_SUCCESS);
+    int i;
+    if (data->tokens[1] != NULL) {
+        /* Check if the argument for exit is a number */
+        for (i = 0; data->tokens[1][i]; i++) {
+            if ((data->tokens[1][i] < '0' || data->tokens[1][i] > '9')
+                && data->tokens[1][i] != '+') {
+                /* If the argument is not a number */
+                errno = 2;
+                return 2;
+            }
+        }
+        errno = _atoi(data->tokens[1]);
+    }
+    free_all_data(data);
+    exit(errno);
 }
 
 /**
- * builtin_cd - changes the current directory
- * @data: struct for the program's data
- * Return: returns 0 on success, -1 on error.
+ * Change the current working directory.
+ * @shell_data: The data structure containing information about the shell.
+ * Return: 0 on success, or another number if specified in the arguments.
  */
-int builtin_cd(data_of_program *data)
+int builtin_cd(shell_data *data)
 {
-	char *new_dir;
+    char *dir_home = env_get_key("HOME", data), *dir_old = NULL;
+    char old_dir[128] = {0};
+    int error_code = 0;
+    if (data->tokens[1]) {
+        if (str_compare(data->tokens[1], "-", 0)) {
+            dir_old = env_get_key("OLDPWD", data);
+            if (dir_old)
+                error_code = set_work_directory(data, dir_old);
+            _print(env_get_key("PWD", data));
+            _print("\n");
+            return error_code;
+        }
+        else {
+            return set_work_directory(data, data->tokens[1]);
+        }
+    }
+    else {
+        if (!dir_home)
+            dir_home = getcwd(old_dir, 128);
+        return set_work_directory(data, dir_home);
+    }
+    return 0;
+}
 
-	if (data->arguments[1] == NULL)
+/**
+ * Set the current working directory.
+ * @shell_data: The data structure containing information about the shell.
+ * @new_dir: The path to be set as the new working directory.
+ * Return: 0 on success, or another number if specified in the arguments.
+ */
+int set_work_directory(shell_data *data, char *new_dir)
+{
+    char old_dir[128] = {0};
+    int err_code = 0;
+    getcwd(old_dir, 128);
+    if (!str_compare(old_dir, new_dir, 0)) {
+        err_code = chdir(new_dir);
+        if (err_code == -1) {
+            errno = 2;
+            return 3;
+        }
+        env_set_key("PWD", new_dir, data);
+    }
+    env_set_key("OLDPWD", old_dir, data);
+    return 0;
+}
+
+/**
+ * Display information about the shell environment.
+ * @shell_data: The data structure containing information about the shell.
+ * Return: 0 on success, or another number if specified in the arguments.
+ */
+int builtin_help(shell_data *data)
+{
+    int i, length = 0;
+    char *messages[6] = {NULL};
+    messages[0] = HELP_MSG;
+
+    /* Validate arguments */
+    if (data->tokens[1] == NULL) {
+        _print(messages[0] + 6);
+        return 1;
+    }
+    if (data->tokens[2] != NULL) {
+        errno = E2BIG;
+        perror(data->command_name);
+        return 5;
+    }
+
+    	/* Set up the help messages */
+	messages[1] = CD_HELP_MSG;
+	messages[2] = HELP_HELP_MSG;
+	messages[3] = EXIT_HELP_MSG;
+	messages[4] = ENV_HELP_MSG;
+	messages[5] = ALIAS_HELP_MSG;
+
+	/* Check if a specific command was requested */
+	for (i = 1; i <= 5; i++)
 	{
-		new_dir = search_env(data->env, "HOME");
-		if (new_dir == NULL)
+    		if (str_compare(data->tokens[1], COMMANDS[i-1], 0) == 0)
 		{
-			print_error(data->program_name, NULL, "cd", ERR_NOHOME);
-			return (-1);
-		}
-	}
-	else if (_strcmp(data->arguments[1], "-") == 0)
-	{
-		new_dir = search_env(data->env, "OLDPWD");
-		if (new_dir == NULL)
-		{
-			print_error(data->program_name, NULL, "-", ERR_NOPWD);
-			return (-1);
-		}
-		write(STDOUT_FILENO, new_dir, _strlen(new_dir));
-		write(STDOUT_FILENO, "\n", 1);
-	}
-	else
-	{
-		new_dir = strdup(data->arguments[1]);
-		if (new_dir == NULL)
-		{
-			print_error(data->program_name, NULL, data->arguments[1], ERR_MALLOC);
-			return (-1);
-		}
+        		_print(messages[i]);
+        		return 0;
+    		}
 	}
 
-	if (set_work_directory(data, new_dir) == -1)
-	{
-		free(new_dir);
-		return (-1);
-	}
+	/* If the requested command was not found, print the default message */
+	_print(messages[0] + 6);
+	return 1;
+
 }
 
 /**
- * set_work_directory - set  the work directory
- * @data: struct for the program's data
- * @new_dir: the new directory to change to
- *
- * Return: returns 0 on success, -1 on error
+ * builtin_alias - Add, remove or show aliases.
+ * @shell_data: The data structure containing information about the shell.
+ * Return: 0 on success, or another number if specified in the arguments.
  */
-int set_work_directory(data_of_program *data, char *new_dir)
+int builtin_alias(shell_data *data)
 {
-	char *current_dir;
+    int i = 0;
 
-	if (chdir(new_dir) == -1)
-	{
-		print_error(data->program_name, NULL, new_dir, ERR_NOENT);
-		return (-1);
-	}
+    /* If there are no arguments, print all aliases */
+    if (data->tokens[1] == NULL) {
+        return print_alias(data, NULL);
+    }
 
-	current_dir = getcwd(NULL, 0);
-	if (current_dir == NULL)
-	{
-		print_error(data->program_name, NULL, NULL, ERR_GETCWD);
-		return (-1);
-	}
+    /* If there are arguments, set or print each alias */
+    while (data->tokens[++i]) {
+        if (count_characters(data->tokens[i], "=")) {
+            set_alias(data->tokens[i], data);
+        } else {
+            print_alias(data, data->tokens[i]);
+        }
+    }
 
-	if (set_env(data->env, "OLDPWD", search_env(data->env, "PWD")) == -1 ||
-	    set_env(data->env, "PWD", current_dir) == -1)
-	{
-		print_error(data->program_name, NULL, NULL, ERR_SETENV);
-		return (-1);
-	}
-
-	free(current_dir);
-	return (0);
-}
-
-/**
- * builtin_help - shows help information
- * @data: struct for the program's data
- * Return: always return 0
- */
-int builtin_help(data_of_program *data)
-{
-	write(STDOUT_FILENO, HELP_MSG, _strlen(HELP_MSG));
-	return (0);
-}
-
-/**
- * builtin_alias - create, unset or show aliases
- * @data: data structure with information
- *
- * Return: 0 on success, 1 on failure
- */
-int builtin_alias(data_of_program *data)
-{
-	alias_t *alias = data->aliases;
-
-	if (data->arguments[1] == NULL)
-	{
-		print_alias(alias);
-		return (0);
-	}
-
-	if (_strcmp(data->arguments[1], "-d") == 0)
-	{
-		if (data->arguments[2] == NULL)
-			return (_puterror(data, "Usage: unalias NAME\N", 1));
-
-		delete_alias(alias, data->arguments[2]);
-		return (0);
-	}
-
-	if (data->arguments[2] == NULL)
-	{
-		add_alias(alias, data->arguments[1], "");
-		return (0);
-	}
-
-	if (add_alias(alias, data->arguments[1], data->arguments[2] == NULL)
-			return (_puterror(data, "Error: Allocation failed\n", 1));
-	return (0);
+    return 0;
 }
