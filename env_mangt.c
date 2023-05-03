@@ -1,127 +1,124 @@
 #include "shell.h"
 
 /**
- * env_get_key - Gets the value of an environment variable
- *
- * @name: The name of the environment variable to get
- * @data: A pointer to the data_of_program struct
- *
- * Return: The value of the environment variable,
- * or NULL if it does not exist
+ * get_env_var - gets the value of an environment variable
+ * @var_name: the name of the environment variable
+ * @shell_data: struct containing shell data
+ * Return: pointer to value of the variable or NULL if it doesn't exist
  */
-char *env_get_key(char *name, data_of_program *data)
+char *get_env_var(char *var_name, shell_data *data)
 {
-	size_t len;
-	int a;
+	int i, var_len = 0;
 
-	if (!name || !date)
+	/* check for valid arguments */
+	if (var_name == NULL || data->env == NULL)
 		return (NULL);
 
-	len = str_length(name);
+	/* calculate length of variable name */
+	var_len = str_length(var_name);
 
-	for (a = 0; data->environ[a] != NULL; a++)
-	{
-		if (str_compare(data->environ[a], name, len) == 0
-				&& data->environ[a][len] == '=')
-		{
-			return (data->environ[a] + len + 1);
+	for (i = 0; data->env[i]; i++)
+	{/* iterate through env and check for matching variable name */
+		if (str_compare(var_name, data->env[i], var_len) &&
+		 data->env[i][var_len] == '=')
+		{/* return value of variable when found */
+			return (data->env[i] + var_len + 1);
 		}
 	}
+	/* return NULL if variable not found */
 	return (NULL);
 }
 
 /**
- * env_set_key - Overwrite the value of the environment variable
- *
- * @key: The name of the environment variable to set
- * @value: The new value for the environment variable
- * @data: A pointer to the data_of_program struct
- *
- * Return: 0 on success, or -1 if the key does
- * not exist or could not be set
+ * set_env_var - set the value of an environment variable
+ * or create it if it does not exist
+ * @var_name: name of the variable to set
+ * @var_value: new value
+ * @shell_data: struct containing shell data
+ * Return: 1 if the parameters are NULL, 2 if there is an error, or 0 if success
  */
-int env_set_key(char *key, char *value, data_of_program *data)
+int set_env_var(char *var_name, char *var_value, shell_data *data)
 {
-	size_t key_len, value_len;
-	int b;
-	char *new_env;
+	int i, var_len = 0, is_new_var = 1;
 
-	if (!key || !value || !data)
-		return (-1);
+	/* check for valid arguments */
+	if (var_name == NULL || var_value == NULL || data->env == NULL)
+		return (1);
 
-	key_len = str_length(key);
-	value_len = str_length(value);
+	/* calculate length of variable name */
+	var_len = str_length(var_name);
 
-	for (b = 0; data->environ[a] != NULL; b++)
-	{
-		if (str_compare(data->environ[b], key, key_len) == 0 &&
-				data->environ[i][key_len] == '=')
-		{
-			new_env = str_concat(str_concat(key, "="), value);
-
-			if (new_env == NULL)
-				return (-1);
-
-			free(data->environ[i]);
-			data->environ[i] = new_env;
-
-			return (0);
+	for (i = 0; data->env[i]; i++)
+	{/* iterate through env and check for matching variable name */
+		if (str_compare(var_name, data->env[i], var_len) &&
+		 data->env[i][var_len] == '=')
+		{/* if variable already exists, overwrite it */
+			is_new_var = 0;
+			/* free the entire variable and create it again */
+			free(data->env[i]);
+			break;
 		}
 	}
+	/* create a string of the form key=value */
+	data->env[i] = str_concat(str_duplicate(var_name), "=");
+	data->env[i] = str_concat(data->env[i], var_value);
 
-	return (-1);
+	if (is_new_var)
+	{/* if the variable is new, create it at the end of the list and add a NULL terminator */
+		data->env[i + 1] = NULL;
+	}
+	return (0);
 }
 
 /**
- * env_remove_key - Remove a key from the environment
- *
- * @key: The name of the environment variable to remove
- * @data: A pointer to the data_of_program struct
- *
- * Return: 0 on success, or -1 if the key does not
- * exist or could not be removed
+ * unset_env_var - remove an environment variable
+ * @var_name: the name of the variable to remove
+ * @shell_data: struct containing shell data
+ * Return: 1 if the variable was removed, 0 if the variable does not exist
  */
-int env_remove_key(char *key, data_of_program *data)
+int unset_env_var(char *var_name, shell_data *data)
 {
-	size_t key_len;
-	int j, i;
+	int i, var_len = 0;
 
-	if (!key || !data)
-		return (-1);
+	/* check for valid arguments */
+	if (var_name == NULL || data->env == NULL)
+		return (0);
 
-	key_len = str_length(key);
+	/* calculate length of variable name */
+	var_len = str_length(var_name);
 
-	for (j = 0; data->environ[j] != NULL; j++)
-	{
-		if (str_compare(data->environ[j], key, key_len) == 0 &&
-				data->environ[j][key_len] == '=')
-		{
-			free(data->environ[j]);
-
-			for (i = j; data->environ[i] != NULL; i++)
+	for (i = 0; data->env[i]; i++)
+	{/* iterate through env and check for matching variable name */
+		if (str_compare(var_name, data->env[i], var_len) &&
+		 data->env[i][var_len] == '=')
+		{/* if variable exists, free its memory and shift the other variables down in the array */
+			free(data->env[i]);
+			i++;
+			for (; data->env[i]; i++)
 			{
-				data->environ[i] = data->environ[i + 1];
+				data->env[i - 1] = data->env[i];
 			}
-
-			return (0);
+			data->env[i - 1] = NULL;
+			return (1);
 		}
-	}
+	}	
 
-	return (-1);
+	/* if variable does not exist, return 0 */
+	return (0);
 }
 
 /**
  * print_environ - prints the current environ
- *
- * @data: A pointer to the data_of_program struct
+ * @data: struct for the program's data
+ * Return: nothing
  */
 void print_environ(data_of_program *data)
 {
-	int v;
+	int j;
 
-	if (!data)
-		return;
-
-	for (v = 0; data->environ[v]; v++)
-		printf("%s\n", data->environ[v]);
+	for (j = 0; data->env[j]; j++)
+	{
+		_print(data->env[j]);
+		_print("\n");
+	}
 }
