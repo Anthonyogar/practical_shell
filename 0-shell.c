@@ -1,117 +1,123 @@
 #include "shell.h"
 
 /**
- * main - initialize the variables of the program
- * @argc: number of values recieved from the command line
- * @argv: values recived from the command line
- * @env: number of values recieved from the command line
- *
- * Return: 0 on success, non-zero on failure
+ * main - initializes the variables of the program
+ * @argc: number of values received from the command line
+ * @argv: values received from the command line
+ * @env: number of values received from the command line
+ * Return: zero on success.
  */
 int main(int argc, char *argv[], char *env[])
 {
-	/* declare the data structure and set the pointer */
-	data_of_program data_structure = {NULL}, *data = &data_struct;
-	/* declare an empty prompt string */
+	ShellData data_struct = {NULL}, *data = &data_struct;
 	char *prompt = "";
 
-	/* initialize the data structure with program info */
-	initialize_data(data, argc, argv, env);
+	initialize_shell_data(data, argc, argv, env);
 
-	/* register signal handleer for SIGINT */
 	signal(SIGINT, handle_ctrl_c);
 
-	/*Check if we are in the interactive mode in a terminal */
 	if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO) && argc == 1)
-	{
-		/* set errno to a custom value to indicate inteeractive mode */
-		errno = INTERACTIVE_ERRNO;
-		/* set the prompt to default prompt message */
-		prompt = DEFAULT_PROMPT;
+	{/* We are in the terminal, interactive mode */
+		errno = 2;
+		prompt = PROMPT_MSG;
 	}
-
-	/* reset errno to 0 */
 	errno = 0;
-
-	/* start the main loop */
-	sisifo(prompt. data);
-
-	/* Return 0 to indicate success */
+	run_shell_loop(prompt, data);
 	return (0);
 }
 
 /**
- * initialize_data - initialize the struct with the info
- *                   of the program
- * @data: pointer to the structure of data
- * @argv: array of arguments passed to the program execution
- * @env: environ pased to the program execution
- * @argc: number of values recieved from the command line
+ * handle_ctrl_c - print the prompt in a new line
+ * when the signal SIGINT (ctrl + c) is send to the program
+ * @UNUSED: option of the prototype
  */
-
-/* Initialixze the struct with the info of the program */
-void initialize_data(data_of_program *data, int argc, char *argv[], char **env)
+void handle_ctrl_c(int opr UNUSED)
 {
-	data->environ = env;
-	data->args = argv;
-	data->commands = NULL;
-	data->buffer = NULL;
-	data->prompt = NULL;
-	data->exit_status = 0;
+	_print("\n");
+	_print(PROMPT_MSG);
 }
 
 /**
- * sisifo - its a infinte loop that shows the prompt
- * @prompt: prompt to be printed
- * @data: its a infinite loop that shows the prompt
+ * initialize_shell_data - initializes the struct with the info of the program
+ * @data: pointer to the structure of data
+ * @argv: array of arguments passed to the program execution
+ * @env: environ passed to the program execution
+ * @argc: number of values received from the command line
  */
-
-/* makes the infinite loop that shows the prompt */
-void sisifo(char *prompt, data_of_program *data)
+void initialize_shell_data(Shell_data *data, int argc, char *argv[], char **env)
 {
-	size_t len = 0;
-	ssize_t read = 0;
+	int i = 0;
 
-	while (1)
+	data->program_name = argv[0];
+	data->input_line = NULL;
+	data->command_name = NULL;
+	data->exec_counter = 0;
+	/* define the file descriptor to be read */
+	if (argc == 1)
+		data->file_descriptor = STDIN_FILENO;
+	else
 	{
-		if (isatty(STDIN_FILENO))
-			printf("%s", prompt);
-
-		read = getline(&(data->buffer), &len, stdin);
-
-		if (read == 1)
+		data->file_descriptor = open(argv[1], O_RDONLY);
+		if (data->file_descriptor == -1)
 		{
-			if (isatty(STDIN_FILENO))
-				printf("\n");
-			exit(0);
+			_printe(data->program_name);
+			_printe(": 0: Can't open ");
+			_printe(argv[1]);
+			_printe("\n");
+			exit(127);
 		}
+	}
+	data->tokens = NULL;
+	data->env = malloc(sizeof(char *) * 50);
+	if (env)
+	{
+		for (; env[i]; i++)
+		{
+			data->env[i] = str_duplicate(env[i]);
+		}
+	}
+	data->env[i] = NULL;
+	env = data->env;
 
-		/* remove trailing newline character */
-		data->buffer[read - 1] = '\0';
-
-		/* handle empty input */
-		if (strcmp(data->buffer, "") == 0)
-			continue;
-
-		/* handle ctrl-C signal */
-		signal(SIGINT, handle_ctrl_c);
-
-		/* parse input and execute command */
-		data->commands = parse_input(data->buffer);
-		execute_command(data);
+	data->alias_list = malloc(sizeof(char *) * 20);
+	for (i = 0; i < 20; i++)
+	{
+		data->alias_list[i] = NULL;
 	}
 }
 
 /**
- * handle_ctrl_c - print the prompt in a new line
- * when the signal SIGINT (ctrl + c) is sent to the program
- * @UNUSED: option of prorotype
+ * run_shell_loop - an infinite loop that shows the prompt
+ * @prompt: prompt to be printed
+ * @data: pointer to ShellData struct
  */
-
-/* print the prompt in a new line */
-void handle_ctrl_c(int opr UNUSED)
+void run_shell_loop(char *prompt, Shell_data *data)
 {
-	printf("\n");
-	printf("%s", PROMPT);
-	fflush(stdout);
+    int error_code = 0, string_len = 0;
+
+    while (++(data->exec_counter))
+    {
+        _print(prompt);
+        error_code = string_len = read_input(data);
+
+        if (error_code == EOF)
+        {
+            cleanup_shell_data(data);
+            exit(errno);
+        }
+        if (string_len >= 1)
+        {
+            expand_aliases(data);
+            expand_variables(data);
+            tokenize_input(data);
+            if (data->tokens[0])
+            {
+                error_code = execute_command(data);
+                if (error_code != 0)
+                    print_error(error_code, data);
+            }
+            cleanup_recurrent_data(data);
+        }
+    }
 }
+
