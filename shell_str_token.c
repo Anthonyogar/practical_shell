@@ -1,43 +1,40 @@
 #include "shell.h"
 
 /**
- * _strtok - creates a pointer to a part of a string
- * @line: the string to be parsed
- * @delim: the delimiter used to separate the string
+ * custom_strtok - a function that separates strings with delimiters
+ * @str: pointer to the string to be tokenized
+ * @delim: pointer to the delimiter characters
  *
- * Return: a pointer to the first character of the next token
+ * Return: a pointer to the next token found, or NULL if there are no more tokens
  */
-char *_strtok(char *line, char *delim)
+char *custom_strtok(char *str, const char *delim)
 {
-	static char *last_token; /* The last token returned by _strtok */
-	char *token; /* The token to be returned */
-	char *delim_ptr; /* Pointer to the delimiter in the string */
+	static char *token_start;
+	char *token_end;
 
-	/* If line is not NULL, set last_token to line */
-	if (line)
-		last_token = line;
+	if (str != NULL)
+		token_start = str;
 
-	/* If last_token is NULL, return NULL */
-	if (!last_token)
+	if (*token_start == '\0')
 		return (NULL);
 
-	/* Set token to last_token */
-	token = last_token;
+	/* skip leading delimiter characters */
+	while (*token_start && strchr(delim, *token_start))
+		token_start++;
 
-	/* Find the next occurrence of the delimiter */
-	delim_ptr = _strpbrk(token, delim);
+	/* no more tokens left */
+	if (*token_start == '\0')
+		return (NULL);
 
-	/* If the delimiter was found, replace it with a null character */
-	if (delim_ptr)
-	{
-		*delim_ptr = '\0';
-		last_token = delim_ptr + 1;
-	}
-	else /* If the delimiter was not found, set last_token to NULL */
-	{
-		last_token = NULL;
-	}
+	token_end = token_start;
 
-	/* Return the token */
-	return (token);
+	/* find the end of the token */
+	while (*token_end && !strchr(delim, *token_end))
+		token_end++;
+
+	/* mark the end of the token and move the pointer to the next character */
+	if (*token_end)
+		*token_end++ = '\0';
+
+	return token_start;
 }
