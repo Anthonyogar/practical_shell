@@ -1,66 +1,60 @@
 #include "shell.h"
+
 /**
- * free_array_of_pointers - frees the memory for an array of pointers
- * @directories: the array of pointers to free
- *
- * Return: nothing
+ * free_recurrent_data - frees the fields needed for each loop iteration
+ * @data: struct of the shell's data
+ * Return: void
  */
-void free_array_of_pointers(char **directories)
+void free_recurrent_data(shell_data *data)
 {
-	unsigned int i;
-
-	/* loop theough each pointer in the array */
-	for (i = 0; directories[i] != NULL; i++)
-	{
-		/* free the memory pointed in the array */
-		free(directories[i]);
+	if (data->tokens) {
+		free_array_of_pointers(data->tokens);
+		data->tokens = NULL;
 	}
-
-	/* free the memory allocated for the array */
-	free(directories);
+	if (data->input_line) {
+		free(data->input_line);
+		data->input_line = NULL;
+	}
+	if (data->command_name) {
+		free(data->command_name);
+		data->command_name = NULL;
+	}
 }
 
 /**
- * free_recurrent_data - frees the fields needed each loop
- * @data: the program's data structure
- *
- * Return: nothing
+ * free_all_data - frees all fields of the shell's data
+ * @data: struct of the shell's data
+ * Return: void
  */
-void free_recurrent_data(data_of_program *data)
+void free_all_data(shell_data *data)
 {
-	/* free the command name string */
-	free(data->command_name = NULL);
+	if (data->file_descriptor != 0) {
+		if (close(data->file_descriptor)) {
+			perror(data->program_name);
+		}
+	}
 
-	/* reset the pointers for the next loop interation */
-	data->command_name = NULL;
-	data->args = NULL;
+	free_recurrent_data(data);
+	free_array_of_pointers(data->env);
+	free_array_of_pointers(data->alias_list);
 }
 
 /**
- * free_all_data - frees all fields of the data structure
- * @data: the program's data structure
- *
- * Return: nothing
+ * free_array_of_pointers - frees each pointer of an array of pointers and the
+ * array itself
+ * @array: array of pointers
+ * Return: void
  */
-void free_all_data(data_of_program *data)
+void free_array_of_pointers(char **array)
 {
-	unsigned int i;
+	int i;
 
-	/* free the command name string */
-	free(data->command_name);
-
-	/* free each string in the args array */
-	for (i = 0; data->args[i] != NULL; i++)
-	{
-		free(data->args[i]);
+	if (array != NULL) {
+		for (i = 0; array[i] != NULL; i++) {
+			free(array[i]);
+			array[i] = NULL;
+		}
+		free(array);
+		array = NULL;
 	}
-
-	/* free the memory allocated for the args array */
-	free(data->args);
-
-	/* free the alias list */
-	free_alias_list(data->alias_list);
-
-	/* free the memory allocated for the program's data structure */
-	free(data);
 }

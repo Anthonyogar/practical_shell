@@ -1,104 +1,104 @@
 #include "shell.h"
 
 /**
- * long_to_string - Casts a long number to a string
+ * convert_long_to_string - converts a long number to a string.
+ * @number: number to be converted to a string.
+ * @string: buffer to store the resulting string.
+ * @base: base to use for the conversion.
  *
- * @number: Number to cast
- * @string: Destination buffer for the string representation
- * @base: Base of the number (e.g. 10 for decimal)
- *
- * Description: The resulting string is stored in the given buffer.
- * The buffer must be big enough to store the resulting string,
- * including the null byte. The function supports casting
- * to different number bases, from base 2 to 36.
+ * Return: Nothing.
  */
-void long_to_string(long number, char *string, int base)
+void convert_long_to_string(long number, char *string, int base)
 {
-	char *ptr = string, *ptr1 = string, tmp_char;
-	long tmp_value;
+    int index = 0, in_negative = 0;
+    long quotient = number;
+    char letters[] = "0123456789abcdef";
 
-	if (base < 2 || base > 36)
-	{
-		*string = '\0';
-		return;
-	}
+    if (quotient == 0)
+    {
+        string[index++] = '0';
+    }
 
-	do {
-		tmp_value = number;
-		number /= base;
-		*ptr++ =
-		"zyxwvutsrqponmlkjihgfedcba9876543210123456789abcdefghijklmnopqrstuvwxyz"
-		[35 + (tmp_value - number * base)];
-	} while (number);
+    if (string[0] == '-')
+    {
+        in_negative = 1;
+    }
 
-	if (tmp_value < 0)
-		*ptr++ = '-';
-	*ptr-- = '\0';
+    while (quotient)
+    {
+        if (quotient < 0)
+        {
+            string[index++] = letters[-(quotient % base)];
+        }
+        else
+        {
+            string[index++] = letters[quotient % base];
+        }
+        quotient /= base;
+    }
 
-	while (prt1 < ptr)
-	{
-		tmp_char = *ptr;
-		*ptr-- = *ptr1;
-		*ptr1++ = tmp_chr;
-	}
+    if (in_negative)
+    {
+        string[index++] = '-';
+    }
+
+    string[index] = '\0';
+    reverse_string(string);
 }
 
 /**
- * count_characters - Counts the number of times
- * a character appears in a string
+ * convert_string_to_int - converts a string to an integer.
  *
- * @string: The string to search
- * @character: The character to count
- *
- * Return: The number of times the character appears in the string
- *
- * Description: Counts the number of times
- * a given character appears in a string.
- * The function is case-sensitive.
+ * @s: pointer to the string to be converted.
+ * Return: integer value of the string, or 0 if the string is not a valid integer.
  */
-int count_characters(char *string, char character)
+int convert_string_to_int(char *s)
 {
-	int count = 0;
+    int sign = 1;
+    unsigned int number = 0;
 
-	if (string == NULL)
-		return (0);
+    /* Analyze the sign */
+    while (!('0' <= *s && *s <= '9') && *s != '\0')
+    {
+        if (*s == '-')
+        {
+            sign *= -1;
+        }
+        if (*s == '+')
+        {
+            sign *= +1;
+        }
+        s++;
+    }
 
-	for (; *string != '\0'; string++)
-		count += (*string == character);
+    /* Extract the number */
+    while ('0' <= *s && *s <= '9' && *s != '\0')
+    {
+        number = (number * 10) + (*s - '0');
+        s++;
+    }
 
-	return (count);
+    return (number * sign);
 }
 
 /**
- * _atoi - Converts a string to an integer
- * @s: The string to convert
+ * count_occurrences - counts the occurrences of a character in a string.
  *
- * Return: The integer value of the string
- *
- * Description: Skips leading white space
- * characters and supports the + and -
- * signs. Stops conversion when a
- * non-numeric character is found.
+ * @string: pointer to the string to be analyzed.
+ * @character: character to be counted.
+ * Return: number of occurrences of the character in the string.
  */
-int _atoi(char *s);
+int count_occurrences(char *string, char *character)
 {
-	int sgn = 1;
-	int rslt = 0;
+    int i = 0, counter = 0;
 
-	while (*s == ' ' || (*s >= '\t' && *s <= '\r'))
-		s++;
+    for (; string[i]; i++)
+    {
+        if (string[i] == character[0])
+        {
+            counter++;
+        }
+    }
 
-	if (*s == '+' || *s == '-')
-	{
-		sgn  = (*s == '+') ? 1 : -1;
-		s++;
-	}
-
-	while (*s >= '0' && *s <= '9')
-	{
-		rslt = rslt * 10 + (*s - '0');
-		s++;
-	}
-
-	return (sgn * rslt);
+    return (counter);
 }

@@ -1,94 +1,68 @@
 #include "shell.h"
 
 /**
- * _print - Prints a string to the standard output
- *
- * @string: The string to be printed
- *
- * Return: The number of characters printed
+ * print_to_stdout - writes a string to stdout
+ * @string: pointer to the string to be written
+ * Return: the number of bytes written, or -1 on error
  */
-
-int _print(char *string)
+int print_to_stdout(char *string)
 {
-	int f = 0;
-
-	while (string && string[f])
-		f++;
-
-	return (write(STDOUT_FILENO, string, f));
+	return (write(STDOUT_FILENO, string, str_length(string)));
 }
 
 /**
- * _print_error - Prints an error message to the standard error
- *
- * @errorcode: The error code to be printed
- *
- * @data: A pointer to the data_of_program struct
- *
- * Return: The number of characters printed
+ * print_to_stderr - writes a string to stderr
+ * @string: pointer to the string to be written
+ * Return: the number of bytes written, or -1 on error
  */
-
-int _print_error(int errorcode, data_of_program *data)
+int print_to_stderr(char *string)
 {
-	char *error_msg;
+	return (write(STDERR_FILENO, string, str_length(string)));
+}
 
-	switch (errorcode)
+/**
+ * print_error - writes an error message to stderr
+ * @data: pointer to the program's data
+ * @errorcode: the error code to print
+ * Return: 0 on success, or -1 on error
+ */
+int print_error(int errorcode, shell_data *data)
+{
+	char exec_counter_str[10] = {'\0'};
+
+	long_to_string((long) data->exec_counter, exec_counter_str, 10);
+
+	if (errorcode == 2 || errorcode == 3)
 	{
-		case ERROR_EXIT_OF_RANGE:
-			error_msg = "exit: Illegal number: ";
-			break;
-		case ERROR_EXIT_TOO_MANY_ARGS:
-			error_msg = "exit: too many arguments\n";
-			break;
-		case ERROR_INVALID_ARG:
-			error_msg = "exit: Illegal number: ";
-			break;
-		case ERROR_CD_NO_FILE:
-			error_msg = "cd: can't cd to ";
-			break;
-		case ERROR_CD_TOO_MANY_ARGS:
-			error_msg = "cd: too many arguments\n";
-			break;
-		case ERROR_ENV_NO_FILE:
-			error_msg = ": No such file or directory\n";
-			break;
-		case ERROR_SETENV_TOO_MANY_ARGS:
-			error_msg = "setenv: too many arguments\n";
-			break;
-		case ERROR_UNSETENV_TOO_FEW_ARGS:
-			error_msg = "unsetenv: Too few arguments.\n";
-			break;
-		default:
-			return (0);
+		print_to_stderr(data->program_name);
+		print_to_stderr(": ");
+		print_to_stderr(exec_counter_str);
+		print_to_stderr(": ");
+		print_to_stderr(data->tokens[0]);
+		if (errorcode == 2)
+			print_to_stderr(": Illegal number: ");
+		else
+			print_to_stderr(": can't cd to ");
+		print_to_stderr(data->tokens[1]);
+		print_to_stderr("\n");
 	}
-
-	_printe(data->argv[0]);
-	_printe(": ");
-
-	if (errorcode == ERROR_EXIT_OUT_OF_RANGE ||
-			errorcode == ERROR_EXIT_INVALID_ARG)
-		printe(error_message);
-
-	_printe(error_message);
-	_printe(data->args[1]);
-	_printe("\n");
-
+	else if (errorcode == 127)
+	{
+		print_to_stderr(data->program_name);
+		print_to_stderr(": ");
+		print_to_stderr(exec_counter_str);
+		print_to_stderr(": ");
+		print_to_stderr(data->command_name);
+		print_to_stderr(": not found\n");
+	}
+	else if (errorcode == 126)
+	{
+		print_to_stderr(data->program_name);
+		print_to_stderr(": ");
+		print_to_stderr(exec_counter_str);
+		print_to_stderr(": ");
+		print_to_stderr(data->command_name);
+		print_to_stderr(": Permission denied\n");
+	}
 	return (0);
-}
-
-/**
- * _printe - Prints a string to the standard error
- *
- * @string: The string to be printed
- *
- * Return: The number of characters printed
- */
-int _printe(char *string)
-{
-	int r = 0;
-
-	while (string && string[r])
-		r++;
-
-	return (write(STDERR_FILENO, string, r));
 }
