@@ -16,7 +16,6 @@
 #define BUFSIZE 1024
 #define MAX_ARGS 128
 #define INTERACTIVE_ERRNO 42
-#define PROMPT_MSG "$ "
 
 /**
  * struct data_of_program - data needed for the execution of the program
